@@ -254,7 +254,7 @@ public static class CircuitWorld
             c.ChampionTeam = c.TeamEvent ? winners[0] : "";
             c.ChampionId = c.TeamEvent ? c.Rosters[winners[0]].OrderByDescending(id => c.Fixtures.Count(f => f.WinnerId == id)).First() : winners[0];
         }
-        c.Finished = true; CircuitLedger.Settle(d, c, publish); AutoEntry(d);
+        c.Finished = true; CircuitLedger.Settle(d, c, publish); NationalRewards.Settle(d, c); AutoEntry(d);
     }
     public static void CreateFinals(CareerData d, bool publish)
     {
@@ -314,8 +314,12 @@ public static class CircuitWorld
         if (GroupFormat(cup)) CreateWorldCupSchedule(d, cup);
         else AddRound(cup, cup.Teams, 1);
         d.Esports.Competitions.Add(cup); SchedulePlayer(d, cup);
-        // 只有走小组赛赛制的世界杯需要铺淘汰赛占位；世界总决赛是纯淘汰赛，按原样处理。
-        if (GroupFormat(cup)) ScheduleKnockoutPlaceholders(d, cup);
+        // 只有走小组赛赛制的世界杯需要铺淘汰赛占位与奖励公示；世界总决赛是纯淘汰赛，按原样处理。
+        if (GroupFormat(cup))
+        {
+            ScheduleKnockoutPlaceholders(d, cup);
+            NationalRewards.Announce(d, cup, cup.GroupStartDay);
+        }
         if (publish) CareerEngine.Publish(d, "draw-" + d.Season, "世界大赛签表公布", (finalSeason ? "世界总决赛32位选手就位。" : "") + $"{cup.Name}公布阵容。"
             + (finalSeason && final.PlayerEntered ? $"{CareerEngine.Name(d)}取得世界总决赛席位。" : "") + (cup.PlayerEntered ? $"{CareerEngine.Name(d)}入选{(kind == "worldcup" ? d.Esports.Country : EsportsWorld.ClubName(d, d.Esports.ClubId))}首发阵容。" : ""), "国际赛事", true,
             finalSeason && final.PlayerEntered || cup.PlayerEntered ? ["player"] : []);

@@ -88,6 +88,9 @@ public static class CareerEngine
         EsportsWorld.EndDay(d, d.Day);
         // 先把这一段里被跳过的周报补齐（读档跳天、回滚存档都可能导致缺期），再推进日期。
         WeeklyJournal.ClosePending(d, d.Day);
+        // 世界杯的奖励名单只在生成签表那一刻写入；这里兜住"签表已存在但没有名单"的情况
+        // （例如名单功能是在世界杯生成之后才装上的），避免公示栏一直空着。
+        NationalRewards.Backfill(d);
         d.Day++;
         SocialAppointments.Expire(d);
         // 实时社区弹幕每 7 个生涯日清理一次过时条目：社区话题一周后基本就凉了，

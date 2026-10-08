@@ -45,6 +45,7 @@ public static partial class AiDanmakuScene
         世界赛专属的梗按下面的意思用，每个梗都只是素材，要自然融进一句话里，像观众随手敲上去的，绝对不要写成解释这个梗的说明句，也不要一条里硬塞好几个：「大满败」大赛全参加、一个冠军都没拿到；「虚空N冠」冠军是从虚空里数出来的，数字随便换，用来嘲成绩注水；「本质16强」看着走得挺远，本质还是十六强；「本质亚军」看着差点夺冠，命里就是亚军；「游回家」外战出局，夸张成从客场一路游回去；「藏飞机票」回程票早就买好了，暗示自己知道要输。
         这个语境下还能顺手说：外战内行内战幻神、只会打自家人、出国就腿软、签运选手；也可以拿签运、分组、版本和赛程替选手找理由，或者反过来骂这些理由全是借口。
         世界赛的梗同样守这套规矩：6—20个汉字、口语短句、自然融入；禁止脏话、攻击现实中的真人、涉政涉黄涉暴内容、英文长句，正文不要出现竖线和换行。
+        世界大赛开赛前会公示一批冠军专属的国家级奖励（player.rewards，可能是 null）。观众对这批奖励的反应同样是弹幕素材：眼馋、质疑凭什么、算账、拱火、把离谱的赏赐当梗玩、夺冠后认账或酸。写这类弹幕时用 worlds_reward 族。**不要复述奖励的完整条文**，用「这个彩头」「这批奖励」「国运级的东西」这类泛指说法，最多点一下类别词（地震、放假、改日历）。
         """;
 
     /// <summary>输出协议：约束 JSON 结构与事件族取值，事件族决定弹幕在局内由哪些事件触发时优先抽用。</summary>
@@ -52,8 +53,8 @@ public static partial class AiDanmakuScene
         输出一个完整JSON对象，不要输出这个对象之外的任何文字：
         {"danmaku":[{"event":"hurt","text":"这一下掉得也太狠了"},{"event":"elite","text":"{name}打精英跟散步一样"}]}
         danmaku是本批弹幕，条数按本次要求的数量给出（request.count，通常在八到二十四条之间）；尽量覆盖多个事件族，同一个事件族也可以给好几条，够局内反复抽取。
-        event是这条弹幕归属的事件族，局内触发对应事件时会优先抽这一族。每个event必须逐字取自下面二十四个名称之一，区分大小写：
-        hurt受伤掉血、death濒死或战败、danger血量危险被压制、elite精英战与精英路线、cheap抠门舍不得花钱、draw一回合打出极多牌、draw_repeat反复抽牌、skip_reward跳过卡牌奖励、potion_waste药水乱用或乱弃牌、overkill一次伤害打得特别多、boss首领战、clean打得很干净几乎没挨打、quick速通用时很短、upgrade升级删牌与领奖、shop商店购物、slack火堆休息与摸鱼、achieve夺冠与达成成就、opening开局、gap层数领先或落后、rival对手的进展与淘汰、target把玩家和对手放在一起比、praise顺利完赛值得夸、mock泛泛的嘲讽与看热闹、worlds世界赛清算（只在世界大赛期间使用）。
+        event是这条弹幕归属的事件族，局内触发对应事件时会优先抽这一族。每个event必须逐字取自下面二十五个名称之一，区分大小写：
+        hurt受伤掉血、death濒死或战败、danger血量危险被压制、elite精英战与精英路线、cheap抠门舍不得花钱、draw一回合打出极多牌、draw_repeat反复抽牌、skip_reward跳过卡牌奖励、potion_waste药水乱用或乱弃牌、overkill一次伤害打得特别多、boss首领战、clean打得很干净几乎没挨打、quick速通用时很短、upgrade升级删牌与领奖、shop商店购物、slack火堆休息与摸鱼、achieve夺冠与达成成就、opening开局、gap层数领先或落后、rival对手的进展与淘汰、target把玩家和对手放在一起比、praise顺利完赛值得夸、mock泛泛的嘲讽与看热闹、worlds世界赛清算（只在世界大赛期间使用）、worlds_reward世界大赛冠军奖励（只在世界大赛期间、围绕 player.rewards 公示的奖励名单使用，平时不要出现）。
         text是弹幕正文，6—20个汉字，口语短句。需要引用本次事实时，只能用下面十二个占位符，程序会在上屏前替换成真实内容：
         {name}玩家名、{rival}对手名、{country}赛区、{club}俱乐部、{gap}领先层数、{loss}掉血、{cards}本回合出牌数、{draws}抽牌数、{turn}回合数、{hp}血量、{time}用时、{card}最后打出的牌名。
         没有需要就不要用占位符，不要把十二个都塞进一条；text里出现这十二个之外的任何花括号，该条会被程序整条丢弃。同一批里不要写重复的句子，也不要只换一两个字凑数。
@@ -91,7 +92,7 @@ public static partial class AiDanmakuScene
             {
                 count = Math.Clamp(count, MinimumPerUpdate, MaximumRequested),
                 note = worlds
-                    ? "为下面这些社区动态各写若干条观众弹幕，覆盖不同角度。现在是世界大赛期间，可以放开用世界赛清算梗（大满败、虚空N冠、本质16强、本质亚军、游回家、藏飞机票），但每个梗都要自然融进句子。"
+                    ? "为下面这些社区动态各写若干条观众弹幕，覆盖不同角度。现在是世界大赛期间，可以放开用世界赛清算梗（大满败、虚空N冠、本质16强、本质亚军、游回家、藏飞机票），也可以围绕开赛前公示的国家级奖励名单写（player.rewards，可能为 null）。每个梗都要自然融进句子。"
                     : "为下面这些社区动态各写若干条观众弹幕，覆盖不同角度。"
             },
             player = new
@@ -104,7 +105,16 @@ public static partial class AiDanmakuScene
                 tierName = SituationDanmaku.TierName(SituationDanmaku.Tier(data)),
                 day = data.Day,
                 season = data.Season,
-                worlds
+                worlds,
+                rewards = NationalRewards.Current(data) is { Rewards.Count: > 0 } batch
+                    ? new
+                    {
+                        competition = batch.Competition,
+                        settled = batch.Settled,
+                        grantedCountry = batch.GrantedCountry,
+                        items = batch.Rewards.Select(r => r.Line).ToArray()
+                    }
+                    : null
             },
             recentCommunity = recent
         };
@@ -164,6 +174,6 @@ public static partial class AiDanmakuScene
     {
         "hurt", "death", "danger", "elite", "cheap", "draw", "draw_repeat", "skip_reward", "potion_waste", "overkill",
         "boss", "clean", "quick", "upgrade", "shop", "slack", "achieve", "opening", "gap", "rival", "target", "praise", "mock",
-        "worlds"
+        "worlds", SituationDanmaku.RewardFamily
     };
 }

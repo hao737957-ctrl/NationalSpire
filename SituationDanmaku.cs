@@ -181,7 +181,7 @@ public static class SituationDanmaku
     }
 
     /// <summary>总库的来源分类，只用于统计与冷却区分，不对外暴露。</summary>
-    private enum PoolSource { AdjacentTier, CurrentTier, Community, Spam, Generic, Worlds }
+    private enum PoolSource { AdjacentTier, CurrentTier, Community, Spam, Generic, Worlds, Reward }
 
     private readonly record struct Weighted(string Text, PoolSource Source, double Cooldown);
 
@@ -205,7 +205,7 @@ public static class SituationDanmaku
         // 先用本族；本族候选太少时把回退族一并纳入，保证加权池有足够样本。
         var primary = Collect(all, evt, tier, worlds);
         var candidates = primary.Count >= 4 ? primary : Collect(all, events, tier, worlds);
-        var buckets = new List<Weighted>[6];
+        var buckets = new List<Weighted>[7];
         for (int i = 0; i < buckets.Length; i++) buckets[i] = [];
         foreach (var entry in candidates) buckets[(int)entry.Source].Add(entry);
 
@@ -259,17 +259,23 @@ public static class SituationDanmaku
                 if (worlds && line.Tier == tier) list.Add(new Weighted(line.Text, PoolSource.Worlds, CooldownSeconds(10)));
                 continue;
             }
+            // 世界大赛奖励词条：围绕开赛前公示的国家级奖励名单，同样只在世界赛期间参与。
+            if (line.Event == RewardFamily)
+            {
+                if (worlds && line.Tier == tier) list.Add(new Weighted(line.Text, PoolSource.Reward, CooldownSeconds(10)));
+                continue;
+            }
             if (line.Event != evt) continue;
             if (line.Tier == tier) list.Add(new Weighted(line.Text, PoolSource.CurrentTier, CooldownSeconds(10)));
             else if (line.Tier == adjacent) list.Add(new Weighted(line.Text, PoolSource.AdjacentTier, CooldownSeconds(10)));
         }
         foreach (var entry in community)
         {
-            // AI 在世界赛期间会把清算梗标成 worlds 族，同样只在世界赛期参与。
-            if (entry.Event == WorldsFamily)
+            // AI 在世界赛期间也会把清算梗与奖励话题标成对应族，同样只在世界赛期参与。
+            if (entry.Event is WorldsFamily or RewardFamily)
             {
                 if (worlds && entry.Tier == tier)
-                    list.Add(new Weighted(entry.Text, PoolSource.Worlds, FillCooldownSeconds(20)));
+                    list.Add(new Weighted(entry.Text, entry.Event == RewardFamily ? PoolSource.Reward : PoolSource.Worlds, FillCooldownSeconds(20)));
                 continue;
             }
             if (entry.Event != evt) continue;
@@ -658,8 +664,12 @@ public static class SituationDanmaku
     private const int GenericPercent = 7;
     /// <summary>世界赛专用词条在世界赛期间的固定比例（平时为 0）。</summary>
     public const int WorldsPercent = 20;
+    /// <summary>世界大赛奖励词条在世界赛期间的固定比例（平时为 0）。</summary>
+    public const int RewardPercent = 12;
     /// <summary>世界赛族的名字。</summary>
     public const string WorldsFamily = "worlds";
+    /// <summary>世界大赛奖励族的名字：围绕开赛前公示的国家级奖励名单。</summary>
+    public const string RewardFamily = "worlds_reward";
 
     /// <summary>
     /// 按知名度取各子库在总库中的权重，顺序为
@@ -671,10 +681,11 @@ public static class SituationDanmaku
     {
         int index = Math.Clamp(tier, 1, 4) - 1;
         int worldsShare = worlds ? WorldsPercent : 0;
-        int staticTotal = 100 - CommunityPercent - SpamPercent - GenericPercent - worldsShare;
+        int rewardShare = worlds ? RewardPercent : 0;
+        int staticTotal = 100 - CommunityPercent - SpamPercent - GenericPercent - worldsShare - rewardShare;
         int adjacent = (int)Math.Round(staticTotal * AdjacentShare[index]);
         int current = staticTotal - adjacent;
-        return [adjacent, CommunityPercent, SpamPercent, GenericPercent, current, worldsShare];
+        return [adjacent, CommunityPercent, SpamPercent, GenericPercent, current, worldsShare, rewardShare];
     }
 
     /// <summary>相邻档在静态份额里的占比：档位越高越依赖同档，越无名越靠相邻档撑场。</summary>

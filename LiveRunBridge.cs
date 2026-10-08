@@ -40,6 +40,22 @@ public partial class LiveRunBridge : Node
     private BattleObservation? _battle;
     private LiveRaceHud _hud = null!;
     private LiveDanmakuLayer? _danmaku;
+    /// <summary>
+    /// 国家级奖励公示或发放时调用：先用奖励词条爆发一波，再把奖励名单本身当弹幕推上屏，
+    /// 让玩家在自己的对局里直接看到"这次世界赛冠军能拿到什么"。
+    /// </summary>
+    private void OnRewardsAnnounced(RewardBatch batch, bool settled)
+    {
+        if (!IsInstanceValid(_danmaku) || !_danmaku!.Options.Enabled) return;
+        var lines = new List<string>();
+        if (settled && batch.GrantedCountry.Length > 0) lines.Add($"【{batch.GrantedCountry}】开始执行{batch.Competition}冠军奖励");
+        else lines.Add($"【{batch.Competition}】冠军奖励公示：{batch.Rewards.Count} 项国家级名目");
+        foreach (var reward in batch.Rewards) lines.Add($"{reward.Title}：{reward.Description()}");
+        foreach (string line in SituationDanmaku.Pick(_data, SituationDanmaku.RewardFamily, 4, Facts(new BroadcastLine("mock", "", false)))) lines.Add(line);
+        _danmaku.Burst(lines, SituationDanmaku.RewardFamily);
+        GD.Print($"[NationalSpire] 国家奖励弹幕已推送：{(settled ? "发放" : "公示")} {batch.Competition}（{batch.Rewards.Count} 项）");
+    }
+
     /// <summary>本场开始时重置总库的单场统计（片哥配额）。</summary>
     private void ResetDanmakuCounters() => SituationDanmaku.ResetMatchCounters();
     private RivalMapOverlay? _mapOverlay;
@@ -92,6 +108,8 @@ public partial class LiveRunBridge : Node
             // 队列空了时由这里补内容，用来凑够「最低同时生成数量」。
             _danmaku.TopUp = TopUpDanmaku;
             ResetDanmakuCounters();
+            // 世界大赛的国家级奖励公示/发放时，让弹幕围绕奖励名单爆发一波。
+            NationalRewards.Announced += OnRewardsAnnounced;
             GD.Print($"[NationalSpire] 弹幕层就绪：词条 {SituationDanmaku.Count} 条（{SituationDanmaku.Source}），" +
                 $"当前知名度 {SituationDanmaku.TierName(SituationDanmaku.Tier(_data))}（T{SituationDanmaku.Tier(_data)}），" +
                 $"粉丝 {_data.Fans}，荣誉 {_data.Esports.Honors.Count} 项");
@@ -114,6 +132,7 @@ public partial class LiveRunBridge : Node
         CombatManager.Instance.CombatWon -= OnWon;
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
         _player.Creature.CurrentHpChanged -= HpChanged;
+        NationalRewards.Announced -= OnRewardsAnnounced;
         if (Current == this) Current = null;
         if (IsInstanceValid(_hud)) _hud.QueueFree();
         if (IsInstanceValid(_danmaku)) _danmaku!.QueueFree();

@@ -964,6 +964,54 @@ public partial class CareerScreen : Control, IScreenContext
             DanmakuOptions.MinimumChars, DanmakuOptions.MaximumChars, value => { options.MaxChars = value; SaveNow($"单条宽度上限已设为 {value}（约 {Math.Max(1, value / 2)} 个汉字）。"); });
         NumberRow(box, "重复过滤窗口", "按条数滑动：最近这么多条弹幕里出现过的相同文本不再重复上屏，0 表示不过滤。", options.DedupWindow,
             DanmakuOptions.MinimumDedup, DanmakuOptions.MaximumDedup, value => { options.DedupWindow = value; SaveNow("重复过滤窗口已更新。"); });
+        RewardSettings(data, SaveNow);
+    }
+
+    /// <summary>
+    /// 世界大赛国家级奖励的设置：开关、每届条数、真实数值是否生效、生成取向、玩家自定义条目。
+    /// 奖励在世界大赛开赛前公示、冠军产生时按冠军国籍整批发放，并同步写进社区与弹幕。
+    /// </summary>
+    private void RewardSettings(CareerData data, Action<string, bool> save)
+    {
+        var card = Card(); _content.AddChild(card); var box = Inner(card);
+        Section(box, "世界大赛 · 国家级奖励");
+        var options = data.Esports.Rewards.Normalized();
+        box.AddChild(Text("世界大赛开赛前会公示一批只属于冠军的国家级奖励，夺冠后由冠军所属国家执行。奖励可以极度夸张甚至纯概念" +
+            "（例如「指定地点一次五十级地震」），用来体现尖塔胜者在本国的分量；公示与发放都会写进社区动态并出现在局内弹幕里。", 16, _muted));
+        CheckRow(box, "启用国家级奖励", "关闭后世界大赛不再公示奖励名单，社区与弹幕也不会出现奖励话题。", options.Enabled,
+            value => { options.Enabled = value; save(value ? "国家级奖励已开启。" : "国家级奖励已关闭。", false); });
+        NumberRow(box, "每届公示条数", "一届世界大赛公示几项奖励，这些条目会整批发给冠军。", options.PerEvent,
+            RewardOptions.MinimumPerEvent, RewardOptions.MaximumPerEvent, value => { options.PerEvent = value; save($"每届公示 {value} 项奖励。", false); });
+        CheckRow(box, "真实数值生效", "开启时奖励里的国库、发展度、个人收益与民众关注会真的结算；关闭后奖励只作为文案与社区反响出现，不影响数值。", options.ApplyEffects,
+            value => { options.ApplyEffects = value; save(value ? "奖励数值将真实结算。" : "奖励改为纯概念，不再改变数值。", false); });
+        ChoiceRow(box, "生成取向", "默认按权重混合抽取；更离谱偏向天象与荒诞；纯概念只用无数值条目；自定义只抽你自己写的条目。",
+            RewardOptions.Styles, [0, 1, 2, 3], Array.IndexOf(RewardOptions.Styles, options.Style), value =>
+            {
+                options.Style = RewardOptions.Styles[Math.Clamp(value, 0, RewardOptions.Styles.Length - 1)];
+                save($"奖励生成取向已设为「{options.Style}」。", false);
+            });
+        var stats = NationalRewards.Stats(options);
+        box.AddChild(Text($"当前奖励池：默认 {stats.Total - stats.Custom} 条 + 自定义 {stats.Custom} 条；" +
+            $"分类：{string.Join(" / ", stats.Kinds)}。默认池来自模组目录下的 rewards-default.json，可以直接改那个文件。", 16, new Color("bbcad6")));
+        box.AddChild(Text("自定义奖励（每行一条，格式：分类|奖励名|说明|国库|发展|个人|关注；后四项可省略）", 17, _ink));
+        var editor = new TextEdit
+        {
+            Name = "RewardCustomLines",
+            Text = options.CustomLines,
+            CustomMinimumSize = new Vector2(0, 140),
+            WrapMode = TextEdit.LineWrappingMode.Boundary,
+            PlaceholderText = "天象|指定地点五十级地震|国家可在任意一处无人坐标释放一次五十级地震用于庆贺\n概念|举国同频|夺冠当夜全国所有屏幕同步播放你的最后一手"
+        };
+        box.AddChild(editor);
+        editor.FocusExited += () =>
+        {
+            if (editor.Text == options.CustomLines) return;
+            options.CustomLines = editor.Text;
+            var parsed = NationalRewards.ParseCustom(options.CustomLines);
+            save($"已保存自定义奖励 {parsed.Count} 条（格式不合的行会被忽略）。", false);
+        };
+        if (options.Style != "自定义" && NationalRewards.ParseCustom(options.CustomLines).Count > 0)
+            box.AddChild(Text("提示：自定义条目会与默认池一起参与抽取；把「生成取向」设为「自定义」则只抽你写的这些。", 16, new Color("bbcad6")));
     }
 }
 

@@ -19,6 +19,10 @@ public sealed class EsportsCareer
     public int LastDividendSeason { get; set; }
     public int LastRosterSeason { get; set; }
     public List<CircuitAward> CircuitAwards { get; set; } = [];
+    /// <summary>历届世界大赛公示并发放过的国家级奖励名单。</summary>
+    public List<RewardBatch> RewardBatches { get; set; } = [];
+    /// <summary>国家级奖励的配置（开关、生成取向、玩家自定义条目）。</summary>
+    public RewardOptions Rewards { get; set; } = new();
     public List<SponsorContract> Sponsors { get; set; } = [];
     public List<NationalLegacy> Nations { get; set; } = [];
     public bool Initialized { get; set; }
